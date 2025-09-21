@@ -1,19 +1,11 @@
 #!/bin/bash
 
-# =============================================================================
-# Docker Auto-Installer for Ubuntu
-# Version: 2.0
-# Description: Automated Docker installation with comprehensive error handling
-# Author: Auto-Docker-Installer
-# License: MIT
-# =============================================================================
-
 set -euo pipefail
 
 # Configuration
 readonly SCRIPT_NAME="auto-docker-installer"
 readonly SCRIPT_VERSION="2.0"
-readonly DOCKER_VERSION="latest"  # or specify a version like "5:24.0.5-1~ubuntu.22.04~jammy"
+readonly DOCKER_VERSION="latest"
 readonly MIN_UBUNTU_VERSION="20.04"
 
 # Color codes
@@ -24,14 +16,11 @@ readonly BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m'
 
-# Logging functions
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_debug() { echo -e "${CYAN}[DEBUG]${NC} $1"; }
-
-# Check if running with sudo
 check_sudo() {
     if [[ $EUID -eq 0 ]]; then
         log_error "This script should not be run as root. It will use sudo when needed."
@@ -47,8 +36,8 @@ check_sudo() {
     fi
 }
 
-# Check Ubuntu version
-check_ubuntu_version() {
+check_ubuntu_version()
+{
     if [[ ! -f /etc/os-release ]]; then
         log_error "This script is designed for Ubuntu only"
         exit 1
@@ -71,7 +60,6 @@ check_ubuntu_version() {
     log_info "Detected Ubuntu $VERSION_ID ($VERSION_CODENAME)"
 }
 
-# Check if Docker is already installed
 check_docker_installed() {
     if command -v docker &>/dev/null; then
         local docker_ver=$(docker --version | cut -d' ' -f3 | tr -d ',')
@@ -88,8 +76,8 @@ check_docker_installed() {
     fi
 }
 
-# Install dependencies
-install_dependencies() {
+install_dependencies()
+{
     log_info "Installing required dependencies..."
     
     local dependencies=(
@@ -111,15 +99,10 @@ install_dependencies() {
         exit 1
     fi
 }
-
-# Add Docker repository
-add_docker_repo() {
+add_docker_repo()
+{
     log_info "Setting up Docker repository..."
-    
-    # Create keyring directory
     sudo install -m 0755 -d /etc/apt/keyrings
-    
-    # Download and add GPG key
     if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
          sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg; then
         log_error "Failed to add Docker GPG key"
@@ -127,8 +110,6 @@ add_docker_repo() {
     fi
     
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
-    
-    # Add repository
     local arch=$(dpkg --print-architecture)
     local codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
     
@@ -136,15 +117,14 @@ add_docker_repo() {
 https://download.docker.com/linux/ubuntu $codename stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     
-    # Update package lists
     if ! sudo apt update -qq; then
         log_error "Failed to update package lists with Docker repository"
         exit 1
     fi
 }
 
-# Install Docker packages
-install_docker_packages() {
+install_docker_packages()
+{
     log_info "Installing Docker packages..."
     
     local packages=(
@@ -154,8 +134,6 @@ install_docker_packages() {
         "docker-buildx-plugin"
         "docker-compose-plugin"
     )
-    
-    # If specific version is requested
     if [[ "$DOCKER_VERSION" != "latest" ]]; then
         packages=("${packages[@]/%/=${DOCKER_VERSION}}")
     fi
@@ -166,17 +144,13 @@ install_docker_packages() {
     fi
 }
 
-# Configure Docker post-installation
-configure_docker() {
+configure_docker()
+{
     log_info "Configuring Docker..."
-    
-    # Add user to docker group
     if ! sudo usermod -aG docker "$USER"; then
         log_error "Failed to add user to docker group"
         exit 1
     fi
-    
-    # Enable and start Docker service
     if ! sudo systemctl enable docker.service containerd.service > /dev/null; then
         log_error "Failed to enable Docker services"
         exit 1
@@ -186,17 +160,13 @@ configure_docker() {
         log_error "Failed to start Docker service"
         exit 1
     fi
-    
-    # Create docker directory for the user
     mkdir -p ~/.docker
     sudo chown "$USER:$USER" ~/.docker -R
 }
-
-# Verify installation
-verify_installation() {
+verify_installation()
+{
     log_info "Verifying installation..."
-    
-    # Check Docker version
+
     if ! docker --version &>/dev/null; then
         log_error "Docker command not found"
         return 1
@@ -207,8 +177,6 @@ verify_installation() {
     
     log_success "Docker installed: version $docker_ver"
     log_success "Docker Compose installed: version $compose_ver"
-    
-    # Test with hello-world
     log_info "Testing Docker with hello-world container..."
     if docker run --rm hello-world | grep -q "Hello from Docker!"; then
         log_success "Docker test successful!"
@@ -217,50 +185,44 @@ verify_installation() {
     fi
 }
 
-# Display post-install message
-show_post_install_message() {
+show_post_install_message()
+{
     echo
     echo "================================================================"
-    echo "🚀 Docker Installation Complete!"
+    echo " Docker Installation Complete!"
     echo "================================================================"
     echo
-    echo "📦 Installed:"
+    echo " Installed:"
     echo "   • Docker Engine: $(docker --version | cut -d' ' -f3)"
     echo "   • Docker Compose: $(docker compose version | cut -d' ' -f4)"
     echo
-    echo "⚠️  Important:"
+    echo "  Important:"
     echo "   • You must LOG OUT and LOG BACK IN for group changes to take effect"
     echo "   • After that, you can run Docker commands without sudo"
     echo
-    echo "🔧 Quick test after logging back in:"
+    echo " Quick test after logging back in:"
     echo "   docker run hello-world"
     echo "   docker --version"
     echo
-    echo "📚 Next steps:"
+    echo " Next steps:"
     echo "   • Learn Docker: https://docs.docker.com/get-started/"
     echo "   • Find images: https://hub.docker.com/"
     echo
-    echo "💡 Tip: Run 'docker info' to see detailed Docker information"
+    echo " Tip: Run 'docker info' to see detailed Docker information"
     echo "================================================================"
 }
 
-# Cleanup function
-cleanup() {
+cleanup()
+{
     log_info "Cleaning up temporary files..."
-    # Add any cleanup tasks here if needed
 }
-
-# Main execution
-main() {
+main()
+{
     echo
     log_info "Starting $SCRIPT_NAME v$SCRIPT_VERSION"
     log_info "Target Docker version: $DOCKER_VERSION"
     echo
-    
-    # Set trap for cleanup
     trap cleanup EXIT
-    
-    # Execution steps
     check_sudo
     check_ubuntu_version
     check_docker_installed
@@ -274,7 +236,6 @@ main() {
     log_success "Installation completed successfully!"
 }
 
-# Handle script arguments
 handle_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -295,7 +256,6 @@ handle_arguments() {
                 ;;
             --dry-run)
                 log_info "Dry run mode - no changes will be made"
-                # Add dry-run logic here
                 exit 0
                 ;;
             *)
@@ -308,6 +268,5 @@ handle_arguments() {
     done
 }
 
-# Run main function
 handle_arguments "$@"
 main
