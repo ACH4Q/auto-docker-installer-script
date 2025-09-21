@@ -17,7 +17,7 @@ A bash script that automates the installation of Docker and Docker Compose on Ub
 git clone https://github.com/ACH4Q/auto-docker-installer-script.sh
 
 # Make it executable
-chmod +x auto-docker-installer-script
+chmod +x script.sh
 
 # Run the script
-./install_docker.sh
+./script.sh
